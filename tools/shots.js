@@ -1,0 +1,43 @@
+const { chromium } = require('/home/claude/.npm-global/lib/node_modules/playwright');
+const W = +(process.env.W||393), H = +(process.env.H||759), tag = process.env.TAG||'p';
+(async () => {
+  const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
+  const page = await browser.newPage({ viewport: { width: W, height: H }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 });
+  const errs = [];
+  page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+  page.on('pageerror', e => errs.push('PAGEERROR ' + e.message));
+  await page.goto('file:///home/claude/app/dist/test.html');
+  const w = ms => page.waitForTimeout(ms);
+  const shot = async n => page.screenshot({ path: `shots/${tag}-${n}.png` });
+  await w(900); await shot('01boot');
+  const down = (sel, id, x=0, y=0) => page.dispatchEvent(sel, 'pointerdown', { pointerId: id, clientX: x, clientY: y });
+  const up = (sel, id) => page.dispatchEvent(sel, 'pointerup', { pointerId: id });
+  await down('#scrTouch', 1); await w(1700); await shot('02onboard');
+  const jb = await (await page.$('#joy')).boundingBox(); const cx = jb.x + jb.width/2, cy = jb.y + jb.height/2;
+  await down('.key[data-i="5"]', 5); await w(250); await shot('03held');
+  await page.dispatchEvent('#joy','pointerdown',{pointerId:50,clientX:cx,clientY:cy}); await page.dispatchEvent('#joy','pointermove',{pointerId:50,clientX:cx+50,clientY:cy-2});
+  await w(250); await shot('04held-right');
+  await page.dispatchEvent('#joy','pointerup',{pointerId:50}); await up('.key[data-i="5"]', 5);
+  await page.evaluate(() => { advanceCoach(0); });
+  await down('.key[data-i="3"]', 6); await w(150); await up('.key[data-i="3"]', 6); await w(200); await shot('05home');
+  await down('#bYellow', 7); await up('#bYellow', 7); await w(200); await shot('06menu');
+  await page.evaluate(() => { R.menuIdx.sound = 2; }); await w(100); await shot('07menu-reverb');
+  await down('#bYellow', 7); await up('#bYellow', 7);
+  await page.evaluate(() => { setMode('SEQ'); }); for (const i of [0,4,5,3]) { await down(`.key[data-i="${i}"]`, 9); await up(`.key[data-i="${i}"]`, 9); }
+  await page.evaluate(() => seqToggle()); await w(700); await shot('08seq');
+  await page.evaluate(() => { setMode('DRUMLOOP'); dlToggle(3); }); await w(700); await shot('09loops');
+  await page.evaluate(() => { setMode('HIRO'); hiroToggle(); }); await w(3200); await shot('10hiro');
+  await page.evaluate(() => { setMode('MIXER'); }); await w(300); await shot('11mixer');
+  await page.evaluate(() => { setMode('DRUM'); }); await down('.key[data-i="1"]', 12); await up('.key[data-i="1"]', 12); await w(100); await shot('12drum');
+  await page.evaluate(() => { setMode('PLAY'); S.body = 1; applyBody(); render(); }); await w(200); await shot('13chalk');
+  await page.evaluate(() => { S.body = 3; applyBody(); render(); }); await w(200); await shot('14coral');
+  await page.evaluate(() => { S.body = 0; applyBody(); openHelp(); }); await w(500); await shot('15help');
+  await page.evaluate(() => { document.querySelector('.htab[data-p=pStick]').click(); }); await w(200); await shot('16help-stick');
+  await page.evaluate(() => closeHelp()); await w(400);
+  // frame cost
+  const cost = await page.evaluate(() => { const t0 = performance.now(); for (let i = 0; i < 60; i++) drawScreen(); return (performance.now() - t0) / 60; });
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth || document.getElementById('dev').scrollHeight > innerHeight + 1);
+  console.log(tag, 'frame ms', cost.toFixed(2), 'overflow', overflow, 'OLED', await page.evaluate(() => OLED.W + 'x' + OLED.H + ' p' + OLED.pitch));
+  console.log('ERRORS', errs.filter(e => !e.includes('ERR_TUNNEL')).join('\n') || 'none');
+  await browser.close();
+})();

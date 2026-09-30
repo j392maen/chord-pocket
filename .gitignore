@@ -1,0 +1,8 @@
+shots/
+dist/test.html
+test/harness
+test/render.wav
+*.o
+.DS_Store
+ios/ChordPocket.xcodeproj/
+ios/ChordPocket/Info.plist
