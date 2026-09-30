@@ -130,6 +130,8 @@ function allNotes(ch) { return ch.bass != null ? [ch.bass, ...ch.notes] : ch.not
 function chordPress(i) {
   const now = Engine.now();
   haptic('light');
+  const already = R.held.get(i);
+  if (already) releaseVoices(already);          // same key pressed again before its release arrived
   let slashDeg = null;
   if (S.patch.fx.bassMode === 'SLASH' && R.order.length) slashDeg = R.order[R.order.length - 1];
   if (slashDeg != null) { const prev = R.held.get(slashDeg); if (prev) releaseVoices(prev); }
@@ -473,9 +475,23 @@ function schedClicks(b0, b1) {
     else if (R.hiro && R.hiro.running && b >= R.hiro.start - 4) click(Tr.timeAt(b), ((b - R.hiro.start) % 4 + 4) % 4 < 0.01);
   }
 }
+/* Safety net: a live note that no held key, drone or lead owns and that has no scheduled end
+   is an orphan (a lost release) — release it so nothing can ring forever. */
+function sweepOrphans(now) {
+  if (!R.live) return;
+  const owned = new Set();
+  for (const h of R.held.values()) for (const v of h.voices || []) owned.add(v);
+  if (R.drone) for (const v of R.drone.voices) owned.add(v);
+  if (R.lead) owned.add(R.lead);
+  for (const v of R.live.voices) {
+    if (v.offAt != null || v.ended || v.offDone || owned.has(v)) continue;
+    if (now - v.start > 0.08) liveOff(v, now);
+  }
+}
 function tick() {
   if (!Engine.running()) { if (Engine.ready) R.lastB = Tr.beatNow(); return; }
   const now = Engine.now(), bNow = Tr.beatAt(now);
+  sweepOrphans(now);
   if (R.lastB < bNow) R.lastB = bNow;
   const b1 = Tr.beatAt(now + 0.12), b0 = R.lastB;
   if (R.countIn && bNow >= R.countIn.end - 0.02) beginRecording();

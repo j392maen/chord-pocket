@@ -321,7 +321,13 @@ static void apply_patch(int ch, const cp_patch_t *p) {
 static void exec_now(const cp_event_t *e, int delay) {
     switch (e->type) {
         case CP_EV_NOTE_ON: note_on(e, delay); break;
-        case CP_EV_NOTE_OFF: { voice_t *v = find_voice(e->id); if (v) { if (delay > 0 && v->stage != 3) v->offTime = -delay; else release_voice(v); } } break;
+        case CP_EV_NOTE_OFF: {
+            voice_t *v = find_voice(e->id);
+            if (v) { if (delay > 0 && v->stage != 3) v->offTime = -delay; else release_voice(v); }
+            else {   /* note-on still waiting in the pending list: cancel it so it can't start un-released */
+                for (int i = 0; i < npend; i++) if (PEND[i].type == CP_EV_NOTE_ON && PEND[i].id == e->id) PEND[i].type = 0;
+            }
+        } break;
         case CP_EV_GLIDE: { voice_t *v = find_voice(e->id); if (v) { chan_t *c = &C[v->ch]; float f1 = midi_hz(e->midi + 12.0f * v->snd.oct); float gt = fmaxf(0.005f, c->p.glide * 0.4f);
                               v->glideN = (int)(gt * SR); v->glideMul = powf(f1 / v->freq, 1.0f / (float)(v->glideN > 0 ? v->glideN : 1)); v->midi = e->midi; } } break;
         case CP_EV_PATCH: apply_patch(e->ch, &e->patch); break;

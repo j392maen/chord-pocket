@@ -89,9 +89,20 @@ function bindJoystick() {
 function bindChordKeys() {
   document.querySelectorAll('.key').forEach(el => {
     const i = +el.dataset.i;
-    el.addEventListener('pointerdown', e => { wake(); e.preventDefault(); cap(el, e.pointerId); el.classList.add('on'); keyDown(i); });
-    const up = () => { if (!el.classList.contains('on')) return; el.classList.remove('on'); keyUp(i); };
-    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    // Several fingers can land on the same key during fast repeated taps. Treat the key as one
+    // switch: it goes down with the first finger and up only when the last finger lifts.
+    const fingers = new Set();
+    el.addEventListener('pointerdown', e => {
+      wake(); e.preventDefault(); cap(el, e.pointerId);
+      const first = fingers.size === 0; fingers.add(e.pointerId);
+      if (!first) return;
+      el.classList.add('on'); keyDown(i);
+    });
+    const up = e => {
+      if (!fingers.delete(e.pointerId) || fingers.size) return;
+      el.classList.remove('on'); keyUp(i);
+    };
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
   });
 }
 function keyDown(i) {

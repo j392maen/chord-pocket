@@ -76,7 +76,7 @@ class NChannel {
     const now = NativeEngine.now(), t = Math.max(time || 0, now), e = this.env(), id = ++NativeEngine._vid;
     const v = { id, midi, start: t, offAt: null, env: e, ended: false };
     if (e.s <= 0) { v.offAt = t + e.a + e.d * 3 + 0.1; v.ended = true; setTimeout(() => this.voices.delete(v), (v.offAt - now + 0.2) * 1000); }
-    NativeEngine._send({ op: 'on', ch: this.ch, id, m: midi, v: vel == null ? 0.8 : vel, t: time ? t : 0, g: opts && opts.glideFrom != null ? opts.glideFrom : -1 });
+    NativeEngine._send({ op: 'on', ch: this.ch, id, m: midi, v: vel == null ? 0.8 : vel, t: time && time > now + 0.005 ? t : 0, g: opts && opts.glideFrom != null ? opts.glideFrom : -1 });
     this.voices.add(v); return v;
   }
   noteOff(v, time) {
