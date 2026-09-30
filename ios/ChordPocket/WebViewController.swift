@@ -76,13 +76,6 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKURLSc
     }
     func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
 
-    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        if let url = action.request.url, url.scheme == "https" || url.scheme == "http" {
-            UIApplication.shared.open(url); decisionHandler(.cancel); return
-        }
-        decisionHandler(.allow)
-    }
-
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { webView.reload() }
 
     // MARK: - JS → native bridge
@@ -186,7 +179,7 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKURLSc
         guard let b64 = body["data"] as? String, let data = Data(base64Encoded: b64) else { return }
         let count = data.count / MemoryLayout<Float>.size
         guard count > 0, let ptr = malloc(count * MemoryLayout<Float>.size)?.assumingMemoryBound(to: Float.self) else { return }
-        data.withUnsafeBytes { raw in memcpy(ptr, raw.baseAddress!, count * MemoryLayout<Float>.size) }
+        data.withUnsafeBytes { raw in _ = memcpy(ptr, raw.baseAddress!, count * MemoryLayout<Float>.size) }
         let old = cp_set_user_sample(ptr, Int32(count), num(body, "sr", 44100), Float(num(body, "root", 261.63)))
         if let old = old {
             // free the previous buffer once the audio thread can no longer be reading it

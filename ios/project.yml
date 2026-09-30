@@ -12,6 +12,7 @@ targets:
   ChordPocket:
     type: application
     platform: iOS
+    scheme: {}
     sources:
       - path: ChordPocket
         excludes:
@@ -29,7 +30,6 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GCC_C_LANGUAGE_STANDARD: gnu11
         CODE_SIGN_STYLE: Automatic
-        ENABLE_USER_SCRIPT_SANDBOXING: YES
         GCC_OPTIMIZATION_LEVEL: s
         SWIFT_OPTIMIZATION_LEVEL: "-O"
     info:
